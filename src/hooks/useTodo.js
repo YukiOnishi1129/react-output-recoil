@@ -3,36 +3,31 @@
  *
  * @package hooks
  */
-import { useState, useMemo } from "react";
-import { useSelector, useDispatch } from "react-redux";
-import { addTodo, deleteTodo } from "../store/todo";
+import { useState } from "react";
+import { useRecoilState, useRecoilValue } from "recoil";
+import {
+  todoListState,
+  todoUniqueIdState,
+  todoSearchKeywordState,
+} from "../store/atoms/todo.js";
+import { searchedTodoListState } from "../store/selectors/todo";
 
 /**
  * useTodo
  */
 export const useTodo = () => {
-  /* store */
-  // @ts-ignore
-  const todoList = useSelector((state) => state.todo.todos);
-  const dispatch = useDispatch();
+  // eslint-disable-next-line no-unused-vars
+  /* global state */
+  const [todoList, setTodoList] = useRecoilState(todoListState);
+  const [uniqueId, setUniqueId] = useRecoilState(todoUniqueIdState);
+  const [searchKeyword, setSearchKeyword] = useRecoilState(
+    todoSearchKeywordState
+  );
+  const showTodoList = useRecoilValue(searchedTodoListState);
 
   /* local state */
   /* add input title */
   const [addInputValue, setAddInputValue] = useState("");
-  /* 検索キーワード */
-  const [searchKeyword, setSearchKeyword] = useState("");
-  /* 表示用TodoList */
-  const showTodoList = useMemo(() => {
-    return todoList.filter((todo) => {
-      // 検索キーワードに部分一致したTodoだけを一覧表示する
-      const regexp = new RegExp("^" + searchKeyword, "i");
-      return todo.title.match(regexp);
-    });
-    // useMemoの第二引数([originTodoList, searchKeyword])に依存して処理が実行される
-    // originTodoListとsearchKeywordの値が変更される度にfilterの検索処理が実行
-    // ただし結果が前回と同じならキャッシュを返却し処理は実行されない(無駄な処理を省いている)
-    // 詳しくはuseMemoを調べてください。
-  }, [todoList, searchKeyword]);
 
   /* actions */
   /**
@@ -48,8 +43,17 @@ export const useTodo = () => {
   const handleAddTodo = (e) => {
     //  エンターキーが押された時にTodoを追加する
     if (e.key === "Enter" && addInputValue !== "") {
+      const nextUniqueId = uniqueId + 1;
       // Todo追加処理
-      dispatch(addTodo(addInputValue));
+      setTodoList([
+        ...todoList,
+        {
+          id: nextUniqueId,
+          title: addInputValue,
+        },
+      ]);
+      // 採番IDを更新
+      setUniqueId(nextUniqueId);
       // todo追加後、入力値をリセット
       setAddInputValue("");
     }
@@ -62,7 +66,7 @@ export const useTodo = () => {
    */
   const handleDeleteTodo = (targetId, targetTitle) => {
     if (window.confirm(`「${targetTitle}」のtodoを削除しますか？`))
-      dispatch(deleteTodo(targetId));
+      setTodoList(todoList.filter((todo) => todo.id !== targetId));
   };
 
   /**
